@@ -1,0 +1,28 @@
+pipeline {
+  environment {
+    PACKER_DIR="jenkins-agent/endeca-cs"
+  }
+  agent any
+  stages {
+
+    stage('Building Scripts AMI') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+
+        dir("${PACKER_DIR}"){
+
+          sh "packer build packerfile.json"
+
+        }
+
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+  }
+}

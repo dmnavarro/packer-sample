@@ -1,0 +1,134 @@
+{
+  "variables": {
+    "instance_price": "1.0",
+    "infra_version": "1.0.1",
+    "r3_version": "1.9.0",
+    "terraform_version": "0.11.14",
+    "aws_region": "us-west-2",
+    "aws_subnet": "subnet-0d0368f6d2952ca72",
+    "ami_id": "ami-0c663d99eef860d69",
+    "aws_instance": "t2.small",
+    "ssh_user": "centos",
+    "base_ami_name": "Base Jenkins Agent",
+    "application_name": "r3",
+    "packer_profile": "packer-role",
+    "aws_profile": "strata"
+},
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "profile": "{{user `aws_profile`}}",
+      "subnet_id": "{{user `aws_subnet`}}",
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "spot_price": "{{user `instance_price`}}",
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `ami_id`}}",
+      "iam_instance_profile": "{{user `packer_profile`}}",
+      "associate_public_ip_address": "false",
+      "encrypt_boot": "true",
+      "ssh_username": "{{user `ssh_user`}}",
+      "instance_type": "{{user `aws_instance`}}",
+      "run_tags": {
+        "Name": "service-packer-builder"
+      },
+      "ami_name": "{{user `base_ami_name`}} v{{user `infra_version`}} - {{user `application_name`}}-{{user `r3_version`}}",
+      "tags": {
+        "Name": "{{user `base_ami_name`}} v{{user `infra_version`}} - {{user `application_name`}}-{{user `r3_version`}}",
+        "Base_AMI_Name": "{{ .SourceAMIName }}",
+        "Extra": "{{ .SourceAMITags.TagName }}"
+      },
+      "launch_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_size": 50,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+      ]
+    }
+  ],
+
+  "provisioners": [
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo yum -y update",
+        "sudo yum -y install php php-mysql php-pdo php-pear nodejs"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo curl --silent --location https://dl.yarnpkg.com/rpm/yarn.repo | sudo tee /etc/yum.repos.d/yarn.repo",
+        "sudo yum -y install yarn"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "wget http://repo.mysql.com/mysql-community-release-el7-5.noarch.rpm -P ~",
+        "sudo rpm -ivh ~/mysql-community-release-el7-5.noarch.rpm",
+        "sudo yum -y install mysql-server",
+        "sudo systemctl enable mysqld.service",
+        "sudo sed -i 's/NO_ENGINE_SUBSTITUTION,STRICT_TRANS_TABLES/MYSQL40/g' /etc/my.cnf"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo wget https://releases.hashicorp.com/terraform/{{user `terraform_version`}}/terraform_{{user `terraform_version`}}_linux_amd64.zip",
+        "sudo unzip terraform_{{user `terraform_version`}}_linux_amd64.zip",
+        "sudo mv terraform terraform-{{user `terraform_version`}}",
+        "sudo ln -s /home/centos/terraform-{{user `terraform_version`}} /usr/local/bin/terraform",
+        "sudo ln -s /home/centos/terraform-{{user `terraform_version`}} /usr/bin/terraform"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "aws ssm get-parameter --name 'id-rsa-key' --region us-west-2 --query 'Parameter.Value' --output text > ~/.ssh/id_rsa",
+        "chmod 400 ~/.ssh/id_rsa",
+        "touch ~/.ssh/known_hosts",
+        "ssh-keyscan gitlab.usautoparts.com >> ~/.ssh/known_hosts",
+        "git clone git@gitlab.usautoparts.com:release-engineering/r3-dependencies.git ~/r3-dependencies",
+        "git clone git@gitlab.usautoparts.com:release-engineering/css-js-minifier.git ~/css-js-minifier",
+        "git clone git@gitlab.usautoparts.com:release-engineering/Config.git ~/Config",
+        "git clone git@gitlab.usautoparts.com:release-engineering/XML_Parser.git ~/XML_Parser"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo pear -q install -f --alldeps ~/r3-dependencies/r3-1.9.0.tgz",
+        "sudo pear -q install -f ~/r3-dependencies/stickleback-1.10.0.tgz",
+        "sudo pear -q install -f ~/Config/package.xml",
+        "sudo pear -q install -f ~/XML_Parser/package.xml"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo cp ~/r3-dependencies/Element.php /usr/share/pear/r3/domain/Element.php",
+        "sudo cp ~/r3-dependencies/PageDimension.php /usr/share/pear/r3/domain/PageDimension.php",
+        "sudo cp ~/r3-dependencies/Parser.php /usr/share/pear/XML/Parser.php",
+        "sudo tar -C /usr/share/php -zxvf ~/r3-dependencies/Zend.tar.gz"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "yarn install --cwd ~/css-js-minifier",
+        "yarn cache clean --cwd ~/css-js-minifier"
+      ]
+    }
+  ]
+}

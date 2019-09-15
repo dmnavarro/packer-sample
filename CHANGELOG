@@ -1,0 +1,81 @@
+#---------------------------------------------------------------------------
+# QAS Scripts
+#---------------------------------------------------------------------------
+Infra Version   : v1.0.0
+- QAS base working version
+
+#---------------------------------------------------------------------------
+# Terraform Scripts
+#---------------------------------------------------------------------------
+Infra Version   : v1.0.1
+- Installed jq.
+
+Infra Version   : v1.0.0
+- Terraform base working version
+
+#---------------------------------------------------------------------------
+# Cache Purge Scripts
+#---------------------------------------------------------------------------
+Infra Version   : v1.0.0
+- AWS Cache purge base working version
+
+#---------------------------------------------------------------------------
+# ENDECA PLDB Scripts
+#---------------------------------------------------------------------------
+Infra Version   : v1.0
+- Updated based on the new AMI naming convention.
+
+Infra Version   : v1.0.10
+- Removed PLDB Activation for hydramy slave instances.
+
+Infra Version   : v1.0.9
+- Added hydra pldb staging for cpupwa.
+
+Infra Version   : v1.0.8
+- CHG-622 Endeca DNS update.
+
+Infra Version   : v1.0.6 - v1.0.7
+- Updated based on HYDRAMY and HYDRAMO naming convention.
+
+Infra Version   : v1.0.5
+- Updated cost tag and number of instances.
+
+Infra Version   : v1.0.4
+- Removed bridge for BOT stackname.
+
+Infra Version   : v1.0.3
+- Reduced endeca instances.
+
+Infra Version   : v1.0.2
+- Fix for broken pipe issue.
+
+Infra Version   : v1.0.1
+- Added deployment notification.
+
+Infra Version   : v1.0.0
+- Endeca pldb base working version
+
+#---------------------------------------------------------------------------
+# Maintenance Scripts
+#---------------------------------------------------------------------------
+Infra Version   : v1.0.0
+- offline scripts base working version
+
+Infra Version   : v1.2.0
+- added JCW and APW BOT
+
+#---------------------------------------------------------------------------
+# Base Jenkins Slave
+#---------------------------------------------------------------------------
+Infra Version   : v1.0.1
+ - added terraform
+
+Infra Version   : v1.0.0
+ - base slave configurations
+
+#---------------------------------------------------------------------------
+# Base Jenkins Master
+#---------------------------------------------------------------------------
+Infra Version   : v1.0.0
+Jenkins version : v2.164.1
+ - base master configurations

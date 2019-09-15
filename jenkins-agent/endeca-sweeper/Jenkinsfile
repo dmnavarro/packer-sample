@@ -1,0 +1,88 @@
+pipeline {
+  environment {
+
+    SCRIPTS_SOURCE_DIR="Bastion-scripts/"
+    PACKER_DIR="jenkins-agent/endeca-sweeper/"
+
+  }
+  agent any
+  stages {
+
+    // Batch 1
+    stage('Checkout Endeca Sweeper Scripts') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+        // check contents
+        sh "ls -l"
+
+        // print Directory
+        sh "pwd"
+
+        // checkout scripts
+        dir("Bastion-scripts"){
+          checkout scm: [
+            $class: 'GitSCM',
+            branches: [[name: "bluegreen"]],
+            userRemoteConfigs: [[
+              credentialsId: 'prd-private-gitlab',
+              url: 'git@gitlab.usautoparts.com:platform-services/Bastion-scripts.git'
+            ]]
+          ]
+        }
+        // list after checkout
+        sh "ls -l"
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+
+    stage('Prepare Packer Build') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+
+        // transfer scripts to slave working dir
+
+        sh "rsync -avzpP ${SCRIPTS_SOURCE_DIR} ${PACKER_DIR}"
+
+        dir("${PACKER_DIR}"){
+
+          sh "ls -l"
+
+        }
+
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+
+    stage('Building Scripts AMI') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+
+        dir("${PACKER_DIR}"){
+
+          sh "packer build packerfile.json"
+
+        }
+
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+  }
+}

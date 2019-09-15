@@ -1,0 +1,88 @@
+pipeline {
+  environment {
+
+    SCRIPTS_SOURCE_DIR="endeca-apply-index-aws"
+    PACKER_DIR="jenkins-agent/endeca-pldb/"
+
+  }
+  agent any
+  stages {
+
+    // Batch 1
+    stage('Checkout Endeca Apply Index Scripts') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+        // check contents
+        sh "ls -l"
+
+        // print Directory
+        sh "pwd"
+
+        // checkout scripts
+        dir("endeca-apply-index-aws"){
+          checkout scm: [
+            $class: 'GitSCM',
+            branches: [[name: "master"]],
+            userRemoteConfigs: [[
+              credentialsId: 'prd-private-gitlab',
+              url: 'git@gitlab.usautoparts.com:platform-services/endeca-apply-index-aws.git'
+            ]]
+          ]
+        }
+        // list after checkout
+        sh "ls -l"
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+
+    stage('Prepare Packer Build') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+
+        // transfer scripts to slave working dir
+
+        sh "rsync -avzpP ${SCRIPTS_SOURCE_DIR} ${PACKER_DIR}"
+
+        dir("${PACKER_DIR}"){
+
+          sh "ls -l"
+
+        }
+
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+
+    stage('Building Scripts AMI') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+
+        dir("${PACKER_DIR}"){
+
+          sh "packer build packerfile.json"
+
+        }
+
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+  }
+}

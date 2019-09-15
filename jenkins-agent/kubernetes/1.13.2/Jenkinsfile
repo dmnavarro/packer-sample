@@ -1,0 +1,30 @@
+pipeline {
+  agent {
+    label "base-ec2-spot-worker"
+  }
+  stages {
+
+    // Batch 1
+    stage('Builds Jenkins Agent Base AMI') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+      // check contents
+      sh "ls -l"
+
+        // change directory to ssh script dir
+        dir("jenkins-agent/kubernetes/1.13.2"){
+
+          sh "packer build packerfile.json"
+
+        }
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+  }
+}

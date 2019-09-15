@@ -1,0 +1,47 @@
+node ("kubernetes-1.13.2-node8-ec2-spot-worker") {
+
+    def service = "prerender"
+
+    stage('Prepare') {
+
+        sh "rm -Rf ${env.WORKSPACE}/*"
+
+    }
+
+
+    stage('Code Checkout') {
+
+      // Checkout service codebase
+      dir (service) {
+        checkout (
+          [
+            $class: 'GitSCM',
+            branches: [[name: "${env.SVC_VERSION}"]],
+            doGenerateSubmoduleConfigurations: false,
+            extensions: [[$class: 'CleanCheckout']],
+            submoduleCfg: [],
+            userRemoteConfigs: [[credentialsId: 'prd-private-gitlab', url: 'git@gitlab.usautoparts.com:UPWA-Carparts/puppeteer.git']]
+          ]
+        )
+      }
+    }
+
+    stage('Build Application') {
+
+      // Navigate to codebase
+      dir("${env.WORKSPACE}/${service}") {
+
+        sh "npm install"
+
+      }
+    }
+
+    stage('Run Puppeteer') {
+
+      dir("${env.WORKSPACE}/${service}") {
+
+        sh "RUNTIME_ENV=${env.RUNTIME_ENV} yarn start"
+
+      }
+    }
+}

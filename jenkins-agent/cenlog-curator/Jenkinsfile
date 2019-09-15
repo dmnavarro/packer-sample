@@ -1,0 +1,25 @@
+pipeline {
+  environment {
+    PACKER_DIR="jenkins-agent/cenlog-curator/"
+  }
+  agent any
+  stages {
+
+    // Batch 1
+    stage('Checkout Endeca Sweeper Scripts') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+        dir("${PACKER_DIR}"){
+          sh "packer build packerfile.json"
+        }
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+  }
+}

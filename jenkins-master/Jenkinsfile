@@ -1,0 +1,71 @@
+pipeline {
+  environment {
+
+    SOURCE="jenkins-config"
+    PACKER_DIR="jenkins-master"
+
+  }
+
+  agent  {
+    label "base-ec2-spot-worker"
+  }
+
+  stages {
+
+    stage('Checkout Jenkins Configuration') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+        // check contents
+        sh "ls -l"
+
+        // print Directory
+        sh "pwd"
+
+        // checkout scripts
+        dir("${SOURCE}"){
+          checkout scm: [
+            $class: 'GitSCM',
+            branches: [[name: "local-ebs"]],
+            userRemoteConfigs: [[
+              credentialsId: 'prd-private-gitlab',
+              url: 'git@gitlab.usautoparts.com:platform-services/jenkins-home.git'
+            ]]
+          ]
+        }
+        // list after checkout
+        sh "ls -l"
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+
+    stage('Builds Jenkins Master AMI') {
+      agent {
+        label "base-ec2-spot-worker"
+      }
+      steps {
+      // check contents
+      sh "ls -l"
+
+      sh "rsync -avzpP ${SOURCE} ${PACKER_DIR}"
+
+        // change directory to ssh script dir
+        dir("${PACKER_DIR}"){
+
+          sh "packer build packerfile.json"
+
+        }
+      }
+      post {
+        always {
+          sh "date"
+        }
+      }
+    }
+  }
+}

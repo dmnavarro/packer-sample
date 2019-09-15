@@ -1,0 +1,53 @@
+import java.text.SimpleDateFormat
+
+node ("base-ec2-spot-worker") {
+
+    def jenkins_prefix = "USAPServiceJenkinsMaster"
+    def aws_profile = "strata"
+
+    def backup_ami_name
+    def backup_ami_desc
+    def backup_date
+    def dateFormat
+    def date
+
+    def asg_name
+    def instance_id
+
+    stage('Get instance-id from autoscaling group') {
+
+        asg_name = sh (
+            script: "aws autoscaling describe-auto-scaling-groups --query 'AutoScalingGroups[].[AutoScalingGroupName]' --output=text --profile=strata | grep ${jenkins_prefix}",
+            returnStdout: true
+            ).trim()
+
+        instance_id = sh (
+            script: "aws autoscaling describe-auto-scaling-groups --auto-scaling-group-name ${asg_name} --query 'AutoScalingGroups[0].Instances[?LifecycleState==`InService`].[InstanceId]' --output=text --profile=strata",
+              returnStdout: true
+            ).trim()
+    }
+
+    stage('Prepare backup ami info') {
+
+        script {
+            dateFormat = new SimpleDateFormat("yyyy-MM-dd-HHmm")
+            date = new Date()
+            backup_date=dateFormat.format(date)
+
+            backup_ami_name="BACKUP-PROD-JENKINS-MASTER_${backup_date}"
+            backup_ami_desc="Automated backup for ${instance_id} on ${backup_date}"
+        }
+    }
+
+    stage('Creating ami backup') {
+
+        script {
+
+            echo "Instance id: ${instance_id}"
+            echo "Backup ami name: ${backup_ami_name}"
+            echo "Backup ami description: ${backup_ami_desc}"
+
+            sh "aws ec2 create-image --instance-id ${instance_id} --name \"${backup_ami_name}\" --description \"${backup_ami_desc}\" --no-reboot --query \"ImageId\" --output=text --profile=strata"
+        }
+    }
+} //node

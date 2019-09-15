@@ -1,0 +1,93 @@
+{
+  "variables": {
+    "instance_price": "1.0",
+    "infra_version": "v1.0.0",
+    "aws_region": "us-west-2",
+    "aws_subnet": "subnet-0d0368f6d2952ca72",
+    "ami_id": "ami-01ed306a12b7d1c96",
+    "aws_instance": "t2.small",
+    "ssh_user": "centos",
+    "base_ami_name": "Base Jenkins Agent",
+    "packer_profile": "packer-role",
+    "aws_profile": "strata"
+},
+  "builders": [
+    {
+      "type": "amazon-ebs",
+      "profile": "{{user `aws_profile`}}",
+      "subnet_id": "{{user `aws_subnet`}}",
+      "access_key": "{{user `aws_access_key`}}",
+      "secret_key": "{{user `aws_secret_key`}}",
+      "spot_price": "{{user `instance_price`}}",
+      "region": "{{user `aws_region`}}",
+      "source_ami": "{{user `ami_id`}}",
+      "iam_instance_profile": "{{user `packer_profile`}}",
+      "associate_public_ip_address": "false",
+      "encrypt_boot": "true",
+      "ssh_username": "{{user `ssh_user`}}",
+      "instance_type": "{{user `aws_instance`}}",
+      "run_tags": {
+        "Name": "service-packer-builder"
+      },
+      "ami_name": "{{user `base_ami_name`}} {{user `infra_version`}}",
+      "tags": {
+        "Name": "{{user `base_ami_name`}} {{user `infra_version`}}",
+        "Base_AMI_Name": "{{ .SourceAMIName }}",
+        "Extra": "{{ .SourceAMITags.TagName }}"
+      },
+      "launch_block_device_mappings": [
+        {
+          "device_name": "/dev/sda1",
+          "volume_size": 10,
+          "volume_type": "gp2",
+          "delete_on_termination": true
+        }
+      ]
+    }
+  ],
+
+  "provisioners": [
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo yum -y update",
+        "sudo yum -y install java-1.8.0-openjdk-devel git telnet vim unzip wget epel-release"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "sudo wget https://releases.hashicorp.com/packer/1.3.5/packer_1.3.5_linux_amd64.zip",
+        "sudo unzip packer_1.3.5_linux_amd64.zip",
+        "sudo unlink /sbin/packer",
+        "sudo mv packer packer-1.3.5",
+        "sudo ln -s /home/centos/packer-1.3.5 /usr/local/bin/packer",
+        "sudo ln -s /home/centos/packer-1.3.5 /usr/bin/packer"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+          "sudo yum -y install python-pip",
+          "sudo pip install awscli"
+      ]
+    },
+    {
+      "type": "shell",
+      "execute_command": "{{ .Vars }} /bin/bash -vx '{{ .Path }}'",
+      "inline": [
+        "mkdir -p /home/centos/.aws",
+        "mkdir -p /home/centos/.keys",
+        "aws ssm get-parameter --name 'strata-key' --region us-west-2 --query 'Parameter.Value' --output text > /home/centos/.keys/strata.key",
+        "aws ssm get-parameter --name 'svcendeca-key' --region us-west-2 --query 'Parameter.Value' --output text > /home/centos/.keys/svcendeca.key",
+        "aws ssm get-parameter --name 'pldb-enc-key' --region us-west-2 --query 'Parameter.Value' --output text > /home/centos/.keys/.dbkey.enc",
+        "aws ssm get-parameter --name 'defaults-aws' --region us-west-2 --query 'Parameter.Value' --output text > /home/centos/.aws/config",
+        "aws ssm get-parameter --name 'credentials-aws' --region us-west-2 --query 'Parameter.Value' --output text > /home/centos/.aws/credentials",
+        "chmod 400 /home/centos/.keys/*"
+      ]
+    }
+  ]
+}
